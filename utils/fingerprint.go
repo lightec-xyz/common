@@ -153,6 +153,12 @@ func FingerPrintFromBytes(data FingerPrintBytes, bitsPerVar int) FingerPrint {
 	}
 }
 
+func AssertFpWitness[FR emulated.FieldParams](
+	api frontend.API, fp FingerPrint, els []emulated.Element[FR], nbMaxBitsPerVar ...uint,
+) {
+	AssertValsWithWitnessElements[FR](api, fp.Vals, els, nbMaxBitsPerVar...)
+}
+
 func AssertFpInSet(api frontend.API, fp frontend.Variable, fpSet []FingerPrintBytes, fpBitsPerVar int) {
 	fpv, err := FpValueOf(api, fp, fpBitsPerVar)
 	if err != nil {
@@ -198,6 +204,39 @@ func ValsFromBytes(data []byte, bitsPerVar int) []frontend.Variable {
 
 	slices.Reverse[[]frontend.Variable](ret)
 	return ret
+}
+
+func AssertValsWithWitnessElements[FR emulated.FieldParams](
+	api frontend.API, vars []frontend.Variable, els []emulated.Element[FR], nbMaxBitsPerVar ...uint,
+) {
+	api.AssertIsEqual(len(els), len(vars))
+	var fr FR
+	var maxBits int
+	bitsPerLimb := int(FR.BitsPerLimb(fr))
+	if len(nbMaxBitsPerVar) == 0 {
+		maxBits = int(fr.NbLimbs() * fr.BitsPerLimb())
+	} else {
+		maxBits = int(nbMaxBitsPerVar[0])
+	}
+	nbEffectiveLimbs := int((maxBits + bitsPerLimb - 1) / bitsPerLimb)
+	for i := 0; i < len(els); i++ {
+		for j := nbEffectiveLimbs; j < int(fr.NbLimbs()); j++ {
+			api.AssertIsEqual(els[i].Limbs[j], 0)
+		}
+	}
+	constFactor := big.NewInt(1)
+	for i := 0; i < int(bitsPerLimb); i++ {
+		constFactor = constFactor.Mul(constFactor, big.NewInt(2))
+	}
+	for i := 0; i < len(vars); i++ {
+		eleLimbs := els[i].Limbs
+		composed := eleLimbs[nbEffectiveLimbs-1]
+		for j := nbEffectiveLimbs - 2; j >= 0; j-- {
+			v := api.Mul(composed, constFactor)
+			composed = api.Add(v, eleLimbs[j])
+		}
+		api.AssertIsEqual(vars[i], composed)
+	}
 }
 
 func areVarsEquals(api frontend.API, a, b []frontend.Variable) frontend.Variable {
