@@ -4,14 +4,14 @@ go 1.22.1
 
 require (
 	github.com/consensys/gnark v0.11.0
-	github.com/consensys/gnark-crypto v0.14.0
+	github.com/consensys/gnark-crypto v0.14.1-0.20240909142611-e6b99e74cec1
 	github.com/rs/zerolog v1.33.0
 )
 
 require (
 	github.com/bits-and-blooms/bitset v1.14.2 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/consensys/bavard v0.1.13 // indirect
+	github.com/consensys/bavard v0.1.15 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -27,6 +27,6 @@ require (
 )
 
 replace (
-	github.com/consensys/gnark => github.com/lightec-xyz/gnark v0.0.0-20240314143013-a200efabb849
-	github.com/consensys/gnark-crypto => github.com/lightec-xyz/gnark-crypto v0.0.0-20240314062713-0c4d1f3833df
+	github.com/consensys/gnark => github.com/lightec-xyz/gnark v0.0.0-20241024072556-66f3c7ecf3b9
+	github.com/consensys/gnark-crypto => github.com/lightec-xyz/gnark-crypto v0.0.0-20240927064131-c1ad5db6d61b
 )
