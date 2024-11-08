@@ -50,3 +50,15 @@ func BitsToVars(api frontend.API, bits []frontend.Variable, bitsPerVar int) []fr
 	slices.Reverse[[]frontend.Variable](vals)
 	return vals
 }
+
+func AreVarsEquals(api frontend.API, a, b []frontend.Variable) frontend.Variable {
+	api.AssertIsEqual(len(a), len(b))
+	sum := frontend.Variable(1)
+	for i := 0; i < len(a); i++ {
+		d := api.Sub(a[i], b[i])
+		t := api.IsZero(d)
+		sum = api.And(sum, t)
+	}
+
+	return sum
+}
