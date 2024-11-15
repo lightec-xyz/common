@@ -76,7 +76,7 @@ func (c *CircuitOperations) LoadCcsPkVk() error {
 }
 
 func (c *CircuitOperations) ProveWithAssignment(assignment frontend.Circuit, isFront bool) (*Proof, error) {
-	proof, wit, err := PlonkProve(assignment, c.ProvingKey, c.Ccs, isFront)
+	proof, wit, err := PlonkProve(c.Ccs, c.ProvingKey, assignment, isFront)
 	if err != nil {
 		c.Logger.Error().Msgf("failed to prove %v: %v", c.ComponentName, err)
 		return nil, err
@@ -185,7 +185,7 @@ func PlonkSetup(ccs constraint.ConstraintSystem, srs *kzg.SRS, srsLagrange *kzg.
 	return pk, vk, err
 }
 
-func PlonkProve(assignment frontend.Circuit, pk native_plonk.ProvingKey, ccs constraint.ConstraintSystem, isFront bool) (native_plonk.Proof, witness.Witness, error) {
+func PlonkProve(ccs constraint.ConstraintSystem, pk native_plonk.ProvingKey, assignment frontend.Circuit, isFront bool) (native_plonk.Proof, witness.Witness, error) {
 	innerField := ecc.BN254.ScalarField()
 	outerField := ecc.BN254.ScalarField()
 	wit, err := frontend.NewWitness(assignment, innerField)
