@@ -1,12 +1,7 @@
 package operations
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-
 	"github.com/consensys/gnark-crypto/ecc"
-	kzg_bn254 "github.com/consensys/gnark-crypto/ecc/bn254/kzg"
 	"github.com/consensys/gnark-crypto/kzg"
 	native_plonk "github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/backend/witness"
@@ -231,42 +226,4 @@ func PlonkVerify(vk native_plonk.VerifyingKey, proof native_plonk.Proof, wit wit
 		return err
 	}
 	return nil
-}
-
-func ReadSrs(size int, srsDir string) (*kzg.SRS, *kzg.SRS, error) {
-	srs := kzg.NewSRS(ecc.BN254)
-	srsLagrange := kzg.NewSRS(ecc.BN254)
-
-	sizeLagrange := ecc.NextPowerOfTwo(uint64(size))
-	index := Power2Index(sizeLagrange)
-	srsFile := filepath.Join(srsDir, fmt.Sprintf("bn254_pow_%v.srs", index))
-	lagrangeSrsFile := filepath.Join(srsDir, fmt.Sprintf("bn254_pow_%v.lsrs", index))
-
-	fsrs, err := os.Open(srsFile)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer fsrs.Close()
-	flsrs, err := os.Open(lagrangeSrsFile)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer flsrs.Close()
-
-	_, err = srs.ReadFrom(fsrs)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(srs.(*kzg_bn254.SRS).Pk.G1) != int(sizeLagrange+3) {
-		return nil, nil, fmt.Errorf("incorrect srs size")
-	}
-
-	_, err = srsLagrange.ReadFrom(flsrs)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(srsLagrange.(*kzg_bn254.SRS).Pk.G1) != int(sizeLagrange) {
-		return nil, nil, fmt.Errorf("incorrect srs lagrange size")
-	}
-	return &srs, &srsLagrange, nil
 }
