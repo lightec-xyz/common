@@ -6,6 +6,6 @@ import (
 )
 
 type Proof struct {
-	Proof native_plonk.Proof
-	Wit   witness.Witness
+	Proof   native_plonk.Proof
+	Witness witness.Witness
 }
