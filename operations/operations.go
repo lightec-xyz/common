@@ -87,8 +87,8 @@ func (c *CircuitOperations) ProveWithAssignment(assignment frontend.Circuit, isF
 		return nil, err
 	}
 	return &Proof{
-		Proof: proof,
-		Wit:   wit,
+		Proof:   proof,
+		Witness: wit,
 	}, nil
 }
 
@@ -118,7 +118,7 @@ func (c *CircuitOperations) SaveProofAndWitness(proof *Proof, proofFile, witness
 		return err
 	}
 
-	err = WriteWitness(proof.Wit, witnessFile)
+	err = WriteWitness(proof.Witness, witnessFile)
 	if err != nil {
 		c.Logger.Error().Msgf("failed to write %v witness: %v", c.ComponentName, err)
 		return err
