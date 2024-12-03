@@ -1,9 +1,9 @@
 package operations
 
 type Config struct {
-	HomeDir string
-	SrsDir  string
-	SubDir  string
+	CircuitDir string
+	SrsDir     string
+	DataDir    string
 
 	CcsFile string
 	PkFile  string
