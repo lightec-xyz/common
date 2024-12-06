@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/bits"
 	"os"
@@ -175,6 +176,34 @@ func WriteProof(proof plonk.Proof, fn string) error {
 	return nil
 }
 
+func WriteProofInSolidity(proof plonk.Proof, fn string) error {
+	exists, err := FileExists(fn)
+	if err != nil {
+		return err
+	}
+	if exists {
+		err := os.Remove(fn)
+		if err != nil {
+			return err
+		}
+	}
+	f, err := os.Create(fn)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_proof := proof.(*plonk_bn254.Proof)
+	proofStr := hex.EncodeToString(_proof.MarshalSolidity())
+
+	_, err = f.WriteString(proofStr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func ReadWitness(fn string) (witness.Witness, error) {
 	field := ecc.BN254.ScalarField()
 	var (
@@ -219,6 +248,35 @@ func WriteWitness(wit witness.Witness, fn string) error {
 	}
 	defer f.Close()
 	_, err = pub.WriteTo(f)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func WriteWitnessInJson(wit witness.Witness, fn string) error {
+	pub, err := wit.Public()
+	if err != nil {
+		return err
+	}
+	exists, err := FileExists(fn)
+	if err != nil {
+		return err
+	}
+	if exists {
+		err := os.Remove(fn)
+		if err != nil {
+			return err
+		}
+	}
+	f, err := os.Create(fn)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	pubStr := fmt.Sprintf("%v", pub.Vector())
+	_, err = f.WriteString(pubStr)
 	if err != nil {
 		return err
 	}
