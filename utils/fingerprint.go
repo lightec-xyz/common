@@ -152,6 +152,12 @@ func FingerPrintFromBytes(data FingerPrintBytes, bitsPerVar int) FingerPrint {
 	}
 }
 
+func TestFpWitness[FR emulated.FieldParams](
+	api frontend.API, fp FingerPrint, els []emulated.Element[FR], nbMaxBitsPerVar ...uint,
+) frontend.Variable {
+	return TestValsVSWtnsElements[FR](api, fp.Vals, els, nbMaxBitsPerVar...)
+}
+
 func AssertFpWitness[FR emulated.FieldParams](
 	api frontend.API, fp FingerPrint, els []emulated.Element[FR], nbMaxBitsPerVar ...uint,
 ) {
