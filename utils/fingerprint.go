@@ -158,7 +158,7 @@ func AssertFpWitness[FR emulated.FieldParams](
 	AssertValsWithWitnessElements[FR](api, fp.Vals, els, nbMaxBitsPerVar...)
 }
 
-func AssertFpInSet(api frontend.API, fp frontend.Variable, fpSet []FingerPrintBytes, fpBitsPerVar int) {
+func TestFpInSet(api frontend.API, fp frontend.Variable, fpSet []FingerPrintBytes, fpBitsPerVar int) frontend.Variable {
 	fpv, err := FpValueOf(api, fp, fpBitsPerVar)
 	if err != nil {
 		panic(err)
@@ -170,6 +170,11 @@ func AssertFpInSet(api frontend.API, fp frontend.Variable, fpSet []FingerPrintBy
 		t := fpv.IsEqual(api, v)
 		sum = api.Or(t, sum)
 	}
+	return sum
+}
+
+func AssertFpInSet(api frontend.API, fp frontend.Variable, fpSet []FingerPrintBytes, fpBitsPerVar int) {
+	sum := TestFpInSet(api, fp, fpSet, fpBitsPerVar)
 	api.AssertIsEqual(sum, 1)
 }
 
