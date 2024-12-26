@@ -17,6 +17,42 @@ import (
 	cs_bn254 "github.com/consensys/gnark/constraint/bn254"
 )
 
+func OpenFileOnCreaterOverwrite(file string) (*os.File, error) {
+	// 获取目录的状态信息
+	dir := filepath.Dir(file)
+	_, err := os.Stat(dir)
+	if err != nil {
+		// 如果目录不存在，则创建目录
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(dir, os.ModePerm)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	exists, err := FileExists(file)
+	if err != nil {
+		return nil, err
+	}
+
+	if exists {
+		err := os.Remove(file)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	fFile, err := os.Create(file)
+	if err != nil {
+		return nil, err
+	}
+
+	return fFile, nil
+}
+
 func ReadPk(fn string) (plonk.ProvingKey, error) {
 	f, err := os.Open(fn)
 	if err != nil {
@@ -29,25 +65,17 @@ func ReadPk(fn string) (plonk.ProvingKey, error) {
 }
 
 func WritePk(pk plonk.ProvingKey, fn string) error {
-	exists, err := FileExists(fn)
+	openFile, err := OpenFileOnCreaterOverwrite(fn)
 	if err != nil {
 		return err
 	}
-	if exists {
-		err := os.Remove(fn)
-		if err != nil {
-			return err
-		}
-	}
-	f, err := os.Create(fn)
+	defer openFile.Close()
+
+	_, err = pk.WriteTo(openFile)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = pk.WriteTo(f)
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 
@@ -69,36 +97,32 @@ func ReadVk(fn string) (plonk.VerifyingKey, error) {
 }
 
 func WriteVk(vk plonk.VerifyingKey, fn string) error {
-	exists, err := FileExists(fn)
+	openFile, err := OpenFileOnCreaterOverwrite(fn)
 	if err != nil {
 		return err
 	}
-	if exists {
-		err := os.Remove(fn)
-		if err != nil {
-			return err
-		}
-	}
-	f, err := os.Create(fn)
+	defer openFile.Close()
+
+	_, err = vk.WriteTo(openFile)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = vk.WriteTo(f)
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 
 func WriteSolidity(vk plonk.VerifyingKey, fn string) error {
-	f, err := os.Create(fn)
+	openFile, err := OpenFileOnCreaterOverwrite(fn)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer openFile.Close()
 
-	return vk.ExportSolidity(f)
+	err = vk.ExportSolidity(openFile)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func ReadCcs(fn string) (constraint.ConstraintSystem, error) {
@@ -117,25 +141,17 @@ func ReadCcs(fn string) (constraint.ConstraintSystem, error) {
 }
 
 func WriteCcs(ccs constraint.ConstraintSystem, fn string) error {
-	exists, err := FileExists(fn)
+	openFile, err := OpenFileOnCreaterOverwrite(fn)
 	if err != nil {
 		return err
 	}
-	if exists {
-		err := os.Remove(fn)
-		if err != nil {
-			return err
-		}
-	}
-	f, err := os.Create(fn)
+	defer openFile.Close()
+
+	_, err = ccs.WriteTo(openFile)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = ccs.WriteTo(f)
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 
@@ -154,25 +170,17 @@ func ReadProof(fn string) (plonk.Proof, error) {
 }
 
 func WriteProof(proof plonk.Proof, fn string) error {
-	exists, err := FileExists(fn)
+	openFile, err := OpenFileOnCreaterOverwrite(fn)
 	if err != nil {
 		return err
 	}
-	if exists {
-		err := os.Remove(fn)
-		if err != nil {
-			return err
-		}
-	}
-	f, err := os.Create(fn)
+	defer openFile.Close()
+
+	_, err = proof.WriteTo(openFile)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = proof.WriteTo(f)
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 
@@ -228,29 +236,23 @@ func ReadWitness(fn string) (witness.Witness, error) {
 }
 
 func WriteWitness(wit witness.Witness, fn string) error {
-	pub, err := wit.Public()
+	openFile, err := OpenFileOnCreaterOverwrite(fn)
 	if err != nil {
 		return err
 	}
-	exists, err := FileExists(fn)
+	defer openFile.Close()
+
+	//suppose wtns should only have public ones, but if all witness are given, extract only public ones
+	pubWit, err := wit.Public()
 	if err != nil {
 		return err
 	}
-	if exists {
-		err := os.Remove(fn)
-		if err != nil {
-			return err
-		}
-	}
-	f, err := os.Create(fn)
+
+	_, err = pubWit.WriteTo(openFile)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = pub.WriteTo(f)
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 
