@@ -267,7 +267,7 @@ func WriteWitnessInJson(wit witness.Witness, fn string) error {
 	return nil
 }
 
-func SaveProofInSol(proof *Proof, proofSolFile, witnessSolFile string) error {
+func SaveProofAndWtsInSol(proof *Proof, proofSolFile, witnessSolFile string) error {
 	err := WriteProofInSolidity(proof.Proof, proofSolFile)
 	if err != nil {
 		return err
@@ -279,6 +279,23 @@ func SaveProofInSol(proof *Proof, proofSolFile, witnessSolFile string) error {
 	}
 
 	return nil
+}
+
+func ReadProofAndWts(proofFile, pubWitnessFile string) (*Proof, error) {
+	prf, err := ReadProof(proofFile)
+	if err != nil {
+		return nil, err
+	}
+
+	wit, err := ReadWitness(pubWitnessFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Proof{
+		Proof:   prf,
+		Witness: wit,
+	}, nil
 }
 
 func FileExists(path string) (bool, error) {
