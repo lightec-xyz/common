@@ -185,26 +185,16 @@ func WriteProof(proof plonk.Proof, fn string) error {
 }
 
 func WriteProofInSolidity(proof plonk.Proof, fn string) error {
-	exists, err := FileExists(fn)
+	openFile, err := OpenFileOnCreaterOverwrite(fn)
 	if err != nil {
 		return err
 	}
-	if exists {
-		err := os.Remove(fn)
-		if err != nil {
-			return err
-		}
-	}
-	f, err := os.Create(fn)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+	defer openFile.Close()
 
 	_proof := proof.(*plonk_bn254.Proof)
 	proofStr := hex.EncodeToString(_proof.MarshalSolidity())
 
-	_, err = f.WriteString(proofStr)
+	_, err = openFile.WriteString(proofStr)
 	if err != nil {
 		return err
 	}
@@ -257,31 +247,37 @@ func WriteWitness(wit witness.Witness, fn string) error {
 }
 
 func WriteWitnessInJson(wit witness.Witness, fn string) error {
-	pub, err := wit.Public()
+	openFile, err := OpenFileOnCreaterOverwrite(fn)
 	if err != nil {
 		return err
 	}
-	exists, err := FileExists(fn)
-	if err != nil {
-		return err
-	}
-	if exists {
-		err := os.Remove(fn)
-		if err != nil {
-			return err
-		}
-	}
-	f, err := os.Create(fn)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+	defer openFile.Close()
 
-	pubStr := fmt.Sprintf("%v", pub.Vector())
-	_, err = f.WriteString(pubStr)
+	pw, err := wit.Public()
 	if err != nil {
 		return err
 	}
+
+	pwStr := fmt.Sprint(pw.Vector())
+	_, err = openFile.WriteString(pwStr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func SaveProofInSol(proof *Proof, proofSolFile, witnessSolFile string) error {
+	err := WriteProofInSolidity(proof.Proof, proofSolFile)
+	if err != nil {
+		return err
+	}
+
+	err = WriteWitnessInJson(proof.Witness, witnessSolFile)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
