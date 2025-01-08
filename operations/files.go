@@ -17,42 +17,6 @@ import (
 	cs_bn254 "github.com/consensys/gnark/constraint/bn254"
 )
 
-func OpenFileOnCreaterOverwrite(file string) (*os.File, error) {
-	// 获取目录的状态信息
-	dir := filepath.Dir(file)
-	_, err := os.Stat(dir)
-	if err != nil {
-		// 如果目录不存在，则创建目录
-		if os.IsNotExist(err) {
-			err = os.MkdirAll(dir, os.ModePerm)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
-	}
-
-	exists, err := FileExists(file)
-	if err != nil {
-		return nil, err
-	}
-
-	if exists {
-		err := os.Remove(file)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	fFile, err := os.Create(file)
-	if err != nil {
-		return nil, err
-	}
-
-	return fFile, nil
-}
-
 func ReadPk(fn string) (plonk.ProvingKey, error) {
 	f, err := os.Open(fn)
 	if err != nil {
@@ -111,7 +75,7 @@ func WriteVk(vk plonk.VerifyingKey, fn string) error {
 	return nil
 }
 
-func WriteSolidity(vk plonk.VerifyingKey, fn string) error {
+func WriteVkInSolidity(vk plonk.VerifyingKey, fn string) error {
 	openFile, err := OpenFileOnCreaterOverwrite(fn)
 	if err != nil {
 		return err
@@ -267,7 +231,7 @@ func WriteWitnessInJson(wit witness.Witness, fn string) error {
 	return nil
 }
 
-func SaveProofAndWtsInSol(proof *Proof, proofSolFile, witnessSolFile string) error {
+func SaveProofAndWitnessInSol(proof *Proof, proofSolFile, witnessSolFile string) error {
 	err := WriteProofInSolidity(proof.Proof, proofSolFile)
 	if err != nil {
 		return err
@@ -281,7 +245,7 @@ func SaveProofAndWtsInSol(proof *Proof, proofSolFile, witnessSolFile string) err
 	return nil
 }
 
-func ReadProofAndWts(proofFile, pubWitnessFile string) (*Proof, error) {
+func ReadProofAndWitness(proofFile, pubWitnessFile string) (*Proof, error) {
 	prf, err := ReadProof(proofFile)
 	if err != nil {
 		return nil, err
@@ -358,4 +322,40 @@ func ReadSrs(size int, srsDir string) (*kzg.SRS, *kzg.SRS, error) {
 		return nil, nil, fmt.Errorf("incorrect srs lagrange size")
 	}
 	return &srs, &srsLagrange, nil
+}
+
+func OpenFileOnCreaterOverwrite(file string) (*os.File, error) {
+	// 获取目录的状态信息
+	dir := filepath.Dir(file)
+	_, err := os.Stat(dir)
+	if err != nil {
+		// 如果目录不存在，则创建目录
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(dir, os.ModePerm)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	exists, err := FileExists(file)
+	if err != nil {
+		return nil, err
+	}
+
+	if exists {
+		err := os.Remove(file)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	fFile, err := os.Create(file)
+	if err != nil {
+		return nil, err
+	}
+
+	return fFile, nil
 }
