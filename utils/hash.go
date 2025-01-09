@@ -2,8 +2,6 @@ package utils
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/gnark/std/math/emulated/emparams"
 	"github.com/consensys/gnark/std/math/uints"
 )
 
@@ -11,15 +9,8 @@ const HashSize = 32
 
 type Hash [HashSize]uints.U8
 
-func (h Hash) ToValue(api frontend.API, field *emulated.Field[emparams.BLS12381Fp]) *emulated.Element[emparams.BLS12381Fp] {
-	hashBits := make([]frontend.Variable, 256)
-	for i := 0; i < HashSize; i++ {
-		vBits := api.ToBinary(h[i].Val, 8)
-		copy(hashBits[i*8:(i+1)*8], vBits)
-	}
-
-	rst := field.FromBits(hashBits...)
-	return rst
+func FromBytesHash(hash [HashSize]byte) Hash {
+	return Hash(uints.NewU8Array(hash[:]))
 }
 
 func (h Hash) IsEqual(api frontend.API, other Hash) frontend.Variable {
