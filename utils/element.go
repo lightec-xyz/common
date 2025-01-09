@@ -7,6 +7,19 @@ import (
 	"math/big"
 )
 
+func RetrieveU8ValueFromElement[FR emulated.FieldParams](api frontend.API, e emulated.Element[FR]) frontend.Variable {
+	var fr FR
+	nbLimbs := fr.NbLimbs()
+	for i := 1; i < int(nbLimbs); i++ {
+		api.AssertIsEqual(e.Limbs[i], 0)
+	}
+
+	r := e.Limbs[0]
+	rcheck := rangecheck.New(api)
+	rcheck.Check(r, 8)
+	return r
+}
+
 func RetrieveU32ValueFromElement[FR emulated.FieldParams](api frontend.API, e emulated.Element[FR]) frontend.Variable {
 	var fr FR
 	nbLimbs := fr.NbLimbs()
@@ -21,7 +34,7 @@ func RetrieveU32ValueFromElement[FR emulated.FieldParams](api frontend.API, e em
 	return r
 }
 
-func RetrieveU128FromElement[FR emulated.FieldParams](api frontend.API, e emulated.Element[FR]) frontend.Variable {
+func RetrieveU128ValueFromElement[FR emulated.FieldParams](api frontend.API, e emulated.Element[FR]) frontend.Variable {
 	var fr FR
 	nbLimbs := fr.NbLimbs()
 	for i := 2; i < int(nbLimbs); i++ {
@@ -39,15 +52,15 @@ func RetrieveU128FromElement[FR emulated.FieldParams](api frontend.API, e emulat
 	return r
 }
 
-func RetrieveU128sFromElements[FR emulated.FieldParams](api frontend.API, nIn int, e []emulated.Element[FR]) []frontend.Variable {
+func RetrieveU128ValuesFromElements[FR emulated.FieldParams](api frontend.API, nIn int, e []emulated.Element[FR]) []frontend.Variable {
 	rst := make([]frontend.Variable, nIn)
 	for i := 0; i < nIn; i++ {
-		rst[i] = RetrieveU128FromElement(api, e[i])
+		rst[i] = RetrieveU128ValueFromElement(api, e[i])
 	}
 	return rst
 }
 
-func RetrieveU254FromElement[FR emulated.FieldParams](api frontend.API, e emulated.Element[FR]) frontend.Variable {
+func RetrieveU254ValueFromElement[FR emulated.FieldParams](api frontend.API, e emulated.Element[FR]) frontend.Variable {
 	var fr FR
 	nbLimbs := fr.NbLimbs()
 	for i := 4; i < int(nbLimbs); i++ {
