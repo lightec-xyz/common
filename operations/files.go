@@ -52,11 +52,6 @@ func ReadVk(fn string) (plonk.VerifyingKey, error) {
 	vk := plonk.NewVerifyingKey(ecc.BN254)
 	vk.ReadFrom(f)
 
-	// recursiveVk, err := recursive_plonk.ValueOfVerifyingKey[sw_bn254.ScalarField, sw_bn254.G1Affine, sw_bn254.G2Affine](vk)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
 	return vk, nil
 }
 
@@ -87,6 +82,20 @@ func WriteVkInSolidity(vk plonk.VerifyingKey, fn string) error {
 		return err
 	}
 	return nil
+}
+
+func ReadCcsAndVk(ccsFile, vkFile string) (constraint.ConstraintSystem, plonk.VerifyingKey, error) {
+	ccs, err := ReadCcs(ccsFile)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	vk, err := ReadVk(vkFile)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return ccs, vk, nil
 }
 
 func ReadCcs(fn string) (constraint.ConstraintSystem, error) {
