@@ -12,13 +12,13 @@ const HashSize = 32
 type Hash [HashSize]uints.U8
 
 func (h Hash) ToValue(api frontend.API, field *emulated.Field[emparams.BLS12381Fp]) *emulated.Element[emparams.BLS12381Fp] {
-	blockHashBits := make([]frontend.Variable, 256)
+	hashBits := make([]frontend.Variable, 256)
 	for i := 0; i < HashSize; i++ {
 		vBits := api.ToBinary(h[i].Val, 8)
-		copy(blockHashBits[i*8:(i+1)*8], vBits)
+		copy(hashBits[i*8:(i+1)*8], vBits)
 	}
 
-	rst := field.FromBits(blockHashBits...)
+	rst := field.FromBits(hashBits...)
 	return rst
 }
 
