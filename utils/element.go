@@ -1,10 +1,11 @@
 package utils
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/rangecheck"
-	"math/big"
 )
 
 func RetrieveU8ValueFromElement[FR emulated.FieldParams](api frontend.API, e emulated.Element[FR]) frontend.Variable {
@@ -89,7 +90,7 @@ func AssertValsVSWtnsElements[FR emulated.FieldParams](
 
 	bitsPerLimb := int(FR.BitsPerLimb(fr))
 	if len(nbMaxBitsPerVar) == 0 {
-		maxBits = int(fr.NbLimbs() * fr.BitsPerLimb())
+		maxBits = fr.Modulus().BitLen()
 	} else {
 		maxBits = int(nbMaxBitsPerVar[0])
 	}
@@ -129,7 +130,7 @@ func TestValsVSWtnsElements[FR emulated.FieldParams](
 
 	bitsPerLimb := int(FR.BitsPerLimb(fr))
 	if len(nbMaxBitsPerVar) == 0 {
-		maxBits = int(fr.NbLimbs() * fr.BitsPerLimb())
+		maxBits = fr.Modulus().BitLen()
 	} else {
 		maxBits = int(nbMaxBitsPerVar[0])
 	}
