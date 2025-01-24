@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/gnark/std/recursion/plonk"
 )
 
+// FIXME: this functionality has been defined as VerifyingKey.FingerPrint(api). Use it. Do not duplicate codes.
 func VerifyingKeyMiMCHash[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El algebra.G2ElementT](h hash.Hash, vk plonk.VerifyingKey[FR, G1El, G2El]) ([]byte, error) {
 	mimc := h.New()
 
@@ -90,108 +91,92 @@ func UnsafeFingerPrintFromVkFile[FR emulated.FieldParams, G1El algebra.G1Element
 	return UnsafeFingerPrintFromVk[FR, G1El, G2El, GtEl](&bn254Vk)
 }
 
-type FingerPrint struct {
-	Vals       []frontend.Variable
-	BitsPerVar int
+/**
+ * FingerPrint[FR] is computed as MiMc(VerifyingKey[FR, ...]), and should be only one field long.
+ * When it is used in another field other than where it is computed, it appear as a witness and we should deal with witness in other ways.
+ */
+type FingerPrint[FR emulated.FieldParams] struct {
+	Val frontend.Variable
 }
 
 type FingerPrintBytes []byte
 
-func NewFingerPrint(v []frontend.Variable, b int) FingerPrint {
-	return FingerPrint{
-		Vals:       v,
-		BitsPerVar: b,
+func NewFingerPrint[FR emulated.FieldParams](v frontend.Variable) FingerPrint[FR] {
+	return FingerPrint[FR]{
+		Val: v,
 	}
 }
-func PlaceholderFingerPrint(nbVars, bitsPerVar int) FingerPrint {
-	return FingerPrint{
-		Vals:       make([]frontend.Variable, nbVars),
-		BitsPerVar: bitsPerVar,
+
+func (fp FingerPrint[FR]) AssertIsEqual(api frontend.API, other FingerPrint[FR]) {
+	api.AssertIsEqual(fp.Val, other.Val)
+}
+
+func (fp FingerPrint[FR]) IsEqual(api frontend.API, other FingerPrint[FR]) frontend.Variable {
+	return api.IsZero(api.Sub(fp.Val, other.Val))
+}
+
+func FpValueOf[FR emulated.FieldParams](api frontend.API, v frontend.Variable) FingerPrint[FR] {
+	return FingerPrint[FR]{
+		Val: v,
 	}
 }
-func (fp FingerPrint) AssertIsEqual(api frontend.API, other FingerPrint) {
-	api.AssertIsEqual(fp.BitsPerVar, other.BitsPerVar)
-	api.AssertIsEqual(len(fp.Vals), len(other.Vals))
-	for i := 0; i < len(fp.Vals); i++ {
-		api.AssertIsEqual(fp.Vals[i], other.Vals[i])
+
+func FingerPrintFromBytes[FR emulated.FieldParams](data FingerPrintBytes) FingerPrint[FR] {
+	var fr FR
+	mod := fr.Modulus()
+	bitLen := mod.BitLen()
+	vals := ValsFromBytes(data, bitLen)
+	if len(vals) != 1 {
+		panic("fingerprint bytes longer than expected")
 	}
-}
-func (fp FingerPrint) IsEqual(api frontend.API, other FingerPrint) frontend.Variable {
-	api.AssertIsEqual(fp.BitsPerVar, other.BitsPerVar)
-	return areVarsEquals(api, fp.Vals, other.Vals)
-}
 
-func FpValueOf(api frontend.API, v frontend.Variable, bitsPerVar int) (FingerPrint, error) {
-	bits := api.ToBinary(v)
-
-	vals := BitsToVars(api, bits, bitsPerVar)
-	return FingerPrint{
-		Vals:       vals,
-		BitsPerVar: bitsPerVar,
-	}, nil
-}
-
-func TestVkeyFp[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El algebra.G2ElementT, GtEl algebra.GtElementT](
-	api frontend.API, vkey plonk.VerifyingKey[FR, G1El, G2El], otherFp FingerPrint) (frontend.Variable, error) {
-
-	fpVar, err := vkey.FingerPrint(api)
-	if err != nil {
-		return 0, err
-	}
-	fp, err := FpValueOf(api, fpVar, otherFp.BitsPerVar)
-	if err != nil {
-		return 0, err
-	}
-	return fp.IsEqual(api, otherFp), nil
-}
-
-func FingerPrintFromBytes(data FingerPrintBytes, bitsPerVar int) FingerPrint {
-	return FingerPrint{
-		Vals:       ValsFromBytes(data, bitsPerVar),
-		BitsPerVar: bitsPerVar,
+	return FingerPrint[FR]{
+		Val: vals[0],
 	}
 }
 
 func TestFpWitness[FR emulated.FieldParams](
-	api frontend.API, fp FingerPrint, els []emulated.Element[FR], nbMaxBitsPerVar ...uint,
+	api frontend.API, fp FingerPrint[FR], els []emulated.Element[FR], nbMaxBitsPerVar ...uint,
 ) frontend.Variable {
-	return TestValsVSWtnsElements[FR](api, fp.Vals, els, nbMaxBitsPerVar...)
+	return TestValsVSWtnsElements[FR](api, []frontend.Variable{fp.Val}, els, nbMaxBitsPerVar...)
 }
 
 func AssertFpWitness[FR emulated.FieldParams](
-	api frontend.API, fp FingerPrint, els []emulated.Element[FR], nbMaxBitsPerVar ...uint,
+	api frontend.API, fp FingerPrint[FR], els []emulated.Element[FR], nbMaxBitsPerVar ...uint,
 ) {
-	AssertValsVSWtnsElements[FR](api, fp.Vals, els, nbMaxBitsPerVar...)
+	AssertValsVSWtnsElements[FR](api, []frontend.Variable{fp.Val}, els, nbMaxBitsPerVar...)
 }
 
-func TestFpInSet(api frontend.API, fp frontend.Variable, fpSet []FingerPrintBytes, fpBitsPerVar int) frontend.Variable {
-	fpv, err := FpValueOf(api, fp, fpBitsPerVar)
-	if err != nil {
-		panic(err)
-	}
+func TestFpInFpSet[FR emulated.FieldParams](api frontend.API, fp frontend.Variable, fpSet []FingerPrint[FR]) frontend.Variable {
+	fpv := FpValueOf[FR](api, fp)
 
 	sum := frontend.Variable(0)
 	for i := 0; i < len(fpSet); i++ {
-		v := FingerPrintFromBytes(fpSet[i], fpBitsPerVar)
-		t := fpv.IsEqual(api, v)
+		t := fpv.IsEqual(api, fpSet[i])
 		sum = api.Or(t, sum)
 	}
 	return sum
 }
 
-func AssertFpInSet(api frontend.API, fp frontend.Variable, fpSet []FingerPrintBytes, fpBitsPerVar int) {
-	sum := TestFpInSet(api, fp, fpSet, fpBitsPerVar)
+func AssertFpInFpSet[FR emulated.FieldParams](api frontend.API, fp frontend.Variable, fpSet []FingerPrint[FR]) {
+	sum := TestFpInFpSet[FR](api, fp, fpSet)
 	api.AssertIsEqual(sum, 1)
 }
 
-func areVarsEquals(api frontend.API, a, b []frontend.Variable) frontend.Variable {
-	api.AssertIsEqual(len(a), len(b))
-	sum := frontend.Variable(1)
-	for i := 0; i < len(a); i++ {
-		d := api.Sub(a[i], b[i])
-		t := api.IsZero(d)
-		sum = api.And(sum, t)
-	}
+func TestFpInSet[FR emulated.FieldParams](api frontend.API, fp frontend.Variable, fpSet []FingerPrintBytes) frontend.Variable {
+	set := bytesSetToFpSet[FR](fpSet)
+	return TestFpInFpSet[FR](api, fp, set)
+}
 
-	return sum
+func AssertFpInSet[FR emulated.FieldParams](api frontend.API, fp frontend.Variable, fpSet []FingerPrintBytes) {
+	sum := TestFpInSet[FR](api, fp, fpSet)
+	api.AssertIsEqual(sum, 1)
+}
+
+func bytesSetToFpSet[FR emulated.FieldParams](bytesSet []FingerPrintBytes) []FingerPrint[FR] {
+	ret := make([]FingerPrint[FR], len(bytesSet))
+	for i := 0; i < len(ret); i++ {
+		ret[i] = FingerPrintFromBytes[FR](bytesSet[i])
+	}
+	return ret
 }
