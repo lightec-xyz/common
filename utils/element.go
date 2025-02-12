@@ -74,8 +74,10 @@ func RetrieveU254ValueFromElement[FR emulated.FieldParams](api frontend.API, e e
 		r = api.MulAcc(r, base, e.Limbs[i])
 	}
 
-	rcheck := rangecheck.New(api)
-	rcheck.Check(r, 254)
+	if fr.Modulus().BitLen() > 254 {
+		rcheck := rangecheck.New(api)
+		rcheck.Check(r, 254)
+	}
 
 	return r
 }
