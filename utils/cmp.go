@@ -27,13 +27,13 @@ func ElementsLessEq[T emulated.FieldParams](api frontend.API, a, b emulated.Elem
 	}
 
 	topLimb := int(t.NbLimbs()) - 1 - skip
-	isSofarEq := api.IsZero(api.Sub(a.Limbs[topLimb], b.Limbs[topLimb]))
+	isSofarEq := IsEqual(api, a.Limbs[topLimb], b.Limbs[topLimb])
 	isSofarLess := cmp.IsLess(a.Limbs[topLimb], b.Limbs[topLimb])
 
 	for i := topLimb - 1; i >= 0; i-- {
 		va, vb := a.Limbs[i], b.Limbs[i]
 
-		isThisEq := api.IsZero(api.Sub(va, vb))
+		isThisEq := IsEqual(api, va, vb)
 		isThisLess := cmp.IsLess(va, vb)
 
 		isSofarLess = api.Select(isSofarEq, isThisLess, isSofarLess)

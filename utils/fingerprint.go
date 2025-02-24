@@ -171,7 +171,7 @@ func (fp FingerPrint[FR]) AssertIsEqual(api frontend.API, other FingerPrint[FR])
 }
 
 func (fp FingerPrint[FR]) IsEqual(api frontend.API, other FingerPrint[FR]) frontend.Variable {
-	return api.IsZero(api.Sub(fp.Val, other.Val))
+	return IsEqual(api, fp.Val, other.Val)
 }
 
 func FpValueOf[FR emulated.FieldParams](api frontend.API, v frontend.Variable) FingerPrint[FR] {

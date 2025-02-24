@@ -16,9 +16,7 @@ func FromBytesHash(hash [HashSize]byte) Hash {
 func (h Hash) IsEqual(api frontend.API, other Hash) frontend.Variable {
 	sum := frontend.Variable(1)
 	for i := 0; i < HashSize; i++ {
-		va, vb := h[i].Val, other[i].Val
-		d := api.Sub(va, vb)
-		test := api.IsZero(d)
+		test := IsEqual(api, h[i].Val, other[i].Val)
 		sum = api.And(sum, test)
 	}
 

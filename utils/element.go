@@ -159,8 +159,7 @@ func TestValsVSWtnsElements[FR emulated.FieldParams](
 			composed = api.Add(v, eleLimbs[j])
 		}
 
-		diff := api.Sub(vars[i], composed)
-		t := api.IsZero(diff)
+		t := IsEqual(api, vars[i], composed)
 		sum = api.And(sum, t)
 	}
 
