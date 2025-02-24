@@ -114,21 +114,6 @@ func (c *CircuitOperations) SaveCcsPkVk(ccsFile, pkFile, vkFile string) error {
 	return nil
 }
 
-func (c *CircuitOperations) SaveProofAndWitness(proof *Proof, proofFile, witnessFile string) error {
-	err := WriteProof(proof.Proof, proofFile)
-	if err != nil {
-		c.Logger.Error().Msgf("failed to write %v proof: %v", c.ComponentName, err)
-		return err
-	}
-
-	err = WriteWitness(proof.Witness, witnessFile)
-	if err != nil {
-		c.Logger.Error().Msgf("failed to write %v witness: %v", c.ComponentName, err)
-		return err
-	}
-	return nil
-}
-
 func (c *CircuitOperations) GetVerifyingKey() (native_plonk.VerifyingKey, error) {
 	if c.VerifyingKey == nil {
 		verifyingKey, err := ReadVk(c.Config.VkFile)
