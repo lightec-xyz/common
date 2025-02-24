@@ -24,30 +24,33 @@ type CircuitOperations struct {
 	Logger        *zerolog.Logger
 }
 
-func (c *CircuitOperations) SetupWithCircuit(circuit frontend.Circuit) (constraint.ConstraintSystem, native_plonk.ProvingKey, native_plonk.VerifyingKey, error) {
+func (c *CircuitOperations) SetupWithCircuit(circuit frontend.Circuit) error {
 	log := logger.Logger().With().Str("component", c.ComponentName).Logger()
+
 	ccs, err := NewConstraintSystem(circuit)
 	if err != nil {
 		log.Error().Msgf("failed to new %v constraint system: %v", c.ComponentName, err)
-		return nil, nil, nil, err
+		return err
 	}
 
 	srs, lsrs, err := ReadSrs(ccs.GetNbConstraints()+ccs.GetNbPublicVariables(), c.Config.SrsDir)
 	if err != nil {
 		log.Error().Msgf("failed to read srs: %v", err)
-		return nil, nil, nil, err
+		return err
 	}
 
 	pk, vk, err := PlonkSetup(ccs, srs, lsrs)
 	if err != nil {
 		log.Error().Msgf("failed to init %v pk vk: %v", c.ComponentName, err)
-		return nil, nil, nil, err
+		return err
 	}
+
 	c.Ccs = ccs
 	c.ProvingKey = pk
 	c.VerifyingKey = vk
 	c.Logger = &log
-	return ccs, pk, vk, nil
+
+	return nil
 }
 
 func (c *CircuitOperations) LoadCcsPkVk() error {
