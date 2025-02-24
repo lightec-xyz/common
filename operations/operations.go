@@ -50,7 +50,7 @@ func (c *CircuitOperations) SetupWithCircuit(circuit frontend.Circuit) error {
 	c.VerifyingKey = vk
 	c.Logger = &log
 
-	return nil
+	return c.saveCcsPkVk()
 }
 
 func (c *CircuitOperations) LoadCcsPkVk() error {
@@ -95,18 +95,18 @@ func (c *CircuitOperations) ProveWithAssignment(assignment frontend.Circuit, isF
 	}, nil
 }
 
-func (c *CircuitOperations) SaveCcsPkVk(ccsFile, pkFile, vkFile string) error {
-	err := WriteCcs(c.Ccs, ccsFile)
+func (c *CircuitOperations) saveCcsPkVk() error {
+	err := WriteCcs(c.Ccs, c.Config.CcsFile)
 	if err != nil {
 		c.Logger.Error().Msgf("failed to write %v ccs: %v", c.ComponentName, err)
 		return err
 	}
-	err = WritePk(c.ProvingKey, pkFile)
+	err = WritePk(c.ProvingKey, c.Config.PkFile)
 	if err != nil {
 		c.Logger.Error().Msgf("failed to write %v pk: %v", c.ComponentName, err)
 		return err
 	}
-	err = WriteVk(c.VerifyingKey, vkFile)
+	err = WriteVk(c.VerifyingKey, c.Config.VkFile)
 	if err != nil {
 		c.Logger.Error().Msgf("failed to write %v vk: %v", c.ComponentName, err)
 		return err
