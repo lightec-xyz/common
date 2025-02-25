@@ -24,7 +24,7 @@ type CircuitOperations struct {
 	Logger        *zerolog.Logger
 }
 
-func (c *CircuitOperations) SetupWithCircuit(circuit frontend.Circuit) error {
+func (c *CircuitOperations) SetupAndSaveCcsPkVk(circuit frontend.Circuit) error {
 	log := logger.Logger().With().Str("component", c.ComponentName).Logger()
 
 	ccs, err := NewConstraintSystem(circuit)
