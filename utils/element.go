@@ -35,45 +35,11 @@ func RetrieveU32ValueFromElement[FR emulated.FieldParams](api frontend.API, e em
 	return r
 }
 
-func RetrieveU128ValueFromElement[FR emulated.FieldParams](api frontend.API, e emulated.Element[FR]) frontend.Variable {
-	var fr FR
-	nbLimbs := fr.NbLimbs()
-	for i := 2; i < int(nbLimbs); i++ {
-		api.AssertIsEqual(e.Limbs[i], 0)
-	}
-
-	r := e.Limbs[0]
-	for i := 1; i < 2; i++ {
-		base := new(big.Int).Lsh(big.NewInt(1), uint(i*64))
-		r = api.MulAcc(r, base, e.Limbs[i])
-	}
-
-	rcheck := rangecheck.New(api)
-	rcheck.Check(r, 128)
-	return r
-}
-
-func RetrieveU128ValuesFromElements[FR emulated.FieldParams](api frontend.API, nIn int, e []emulated.Element[FR]) []frontend.Variable {
-	rst := make([]frontend.Variable, nIn)
-	for i := 0; i < nIn; i++ {
-		rst[i] = RetrieveU128ValueFromElement(api, e[i])
-	}
-	return rst
-}
-
 func RetrieveU254ValueFromElement[FR emulated.FieldParams](api frontend.API, e emulated.Element[FR]) frontend.Variable {
+	rs := RetrieveVarsFromElements(api, []emulated.Element[FR]{e})
+	r := rs[0]
+
 	var fr FR
-	nbLimbs := fr.NbLimbs()
-	for i := 4; i < int(nbLimbs); i++ {
-		api.AssertIsEqual(e.Limbs[i], 0)
-	}
-
-	r := e.Limbs[0]
-	for i := 1; i < 4; i++ {
-		base := new(big.Int).Lsh(big.NewInt(1), uint(i*64))
-		r = api.MulAcc(r, base, e.Limbs[i])
-	}
-
 	if fr.Modulus().BitLen() > 254 {
 		rcheck := rangecheck.New(api)
 		rcheck.Check(r, 254)
