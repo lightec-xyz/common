@@ -82,11 +82,9 @@ func RetrieveU254ValueFromElement[FR emulated.FieldParams](api frontend.API, e e
 	return r
 }
 
-func AssertValsVSWtnsElements[FR emulated.FieldParams](
-	api frontend.API, vars []frontend.Variable, witnessValues []emulated.Element[FR], nbMaxBitsPerVar ...uint,
-) {
-	api.AssertIsEqual(len(witnessValues), len(vars))
-
+func RetrieveVarsFromElements[FR emulated.FieldParams](
+	api frontend.API, witnessValues []emulated.Element[FR], nbMaxBitsPerVar ...uint,
+) []frontend.Variable {
 	var fr FR
 	var maxBits int
 
@@ -110,7 +108,10 @@ func AssertValsVSWtnsElements[FR emulated.FieldParams](
 		constFactor = constFactor.Mul(constFactor, big.NewInt(2))
 	}
 
-	for i := 0; i < len(vars); i++ {
+	n := len(witnessValues)
+	rst := make([]frontend.Variable, n)
+
+	for i := 0; i < n; i++ {
 		eleLimbs := witnessValues[i].Limbs
 		composed := eleLimbs[nbEffectiveLimbs-1]
 		for j := nbEffectiveLimbs - 2; j >= 0; j-- {
@@ -118,48 +119,35 @@ func AssertValsVSWtnsElements[FR emulated.FieldParams](
 			composed = api.Add(v, eleLimbs[j])
 		}
 
-		api.AssertIsEqual(vars[i], composed)
+		rst[i] = composed
+	}
+
+	return rst
+}
+
+func AssertValsVSWtnsElements[FR emulated.FieldParams](
+	api frontend.API, vars []frontend.Variable, witnessValues []emulated.Element[FR], nbMaxBitsPerVar ...uint,
+) {
+	n := len(witnessValues)
+	api.AssertIsEqual(n, len(vars))
+
+	vals := RetrieveVarsFromElements(api, witnessValues, nbMaxBitsPerVar...)
+	for i := 0; i < n; i++ {
+		api.AssertIsEqual(vals[i], vars[i])
 	}
 }
 
 func TestValsVSWtnsElements[FR emulated.FieldParams](
 	api frontend.API, vars []frontend.Variable, witnessValues []emulated.Element[FR], nbMaxBitsPerVar ...uint,
 ) frontend.Variable {
-	api.AssertIsEqual(len(witnessValues), len(vars))
+	n := len(witnessValues)
+	api.AssertIsEqual(n, len(vars))
 
-	var fr FR
-	var maxBits int
-
-	bitsPerLimb := int(FR.BitsPerLimb(fr))
-	if len(nbMaxBitsPerVar) == 0 {
-		maxBits = fr.Modulus().BitLen()
-	} else {
-		maxBits = int(nbMaxBitsPerVar[0])
-	}
-
-	nbEffectiveLimbs := int((maxBits + bitsPerLimb - 1) / bitsPerLimb)
-
-	for i := 0; i < len(witnessValues); i++ {
-		for j := nbEffectiveLimbs; j < int(fr.NbLimbs()); j++ {
-			api.AssertIsEqual(witnessValues[i].Limbs[j], 0)
-		}
-	}
-
-	constFactor := big.NewInt(1)
-	for i := 0; i < int(bitsPerLimb); i++ {
-		constFactor = constFactor.Mul(constFactor, big.NewInt(2))
-	}
+	vals := RetrieveVarsFromElements(api, witnessValues, nbMaxBitsPerVar...)
 
 	sum := frontend.Variable(1)
-	for i := 0; i < len(vars); i++ {
-		eleLimbs := witnessValues[i].Limbs
-		composed := eleLimbs[nbEffectiveLimbs-1]
-		for j := nbEffectiveLimbs - 2; j >= 0; j-- {
-			v := api.Mul(composed, constFactor)
-			composed = api.Add(v, eleLimbs[j])
-		}
-
-		t := IsEqual(api, vars[i], composed)
+	for i := 0; i < n; i++ {
+		t := IsEqual(api, vars[i], vals[i])
 		sum = api.And(sum, t)
 	}
 
