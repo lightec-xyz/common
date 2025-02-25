@@ -20,15 +20,10 @@ type U254ToElementCircuit struct {
 	minerReward [32]byte
 }
 
-func newElementFromU254(field *emulated.Field[emparams.BN254Fp], api frontend.API, v frontend.Variable) *emulated.Element[emparams.BN254Fp] {
-	bits := api.ToBinary(v, 254)
-	return field.FromBits(bits...)
-}
-
 func (c *U254ToElementCircuit) Define(api frontend.API) error {
 	api.AssertIsEqual(c.MinerReward, c.minerReward[:])
 
-	field, err := emulated.NewField[sw_bn254.BaseField](api)
+	field, err := emulated.NewField[sw_bn254.ScalarField](api)
 	if err != nil {
 		return err
 	}
@@ -41,6 +36,11 @@ func (c *U254ToElementCircuit) Define(api frontend.API) error {
 	api.AssertIsEqual(minerReward, c.minerReward[:])
 
 	return nil
+}
+
+func newElementFromU254(field *emulated.Field[emparams.BN254Fr], api frontend.API, v frontend.Variable) *emulated.Element[emparams.BN254Fr] {
+	bits := api.ToBinary(v, 254)
+	return field.FromBits(bits...)
 }
 
 func TestU254ToElementCircuit(t *testing.T) {
