@@ -21,7 +21,7 @@ type U254ToElementCircuit struct {
 }
 
 func newElementFromU254(field *emulated.Field[emparams.BN254Fp], api frontend.API, v frontend.Variable) *emulated.Element[emparams.BN254Fp] {
-	bits := api.ToBinary(v, 256)
+	bits := api.ToBinary(v, 254)
 	return field.FromBits(bits...)
 }
 
