@@ -24,30 +24,33 @@ type CircuitOperations struct {
 	Logger        *zerolog.Logger
 }
 
-func (c *CircuitOperations) SetupWithCircuit(circuit frontend.Circuit) (constraint.ConstraintSystem, native_plonk.ProvingKey, native_plonk.VerifyingKey, error) {
+func (c *CircuitOperations) SetupAndSaveCcsPkVk(circuit frontend.Circuit) error {
 	log := logger.Logger().With().Str("component", c.ComponentName).Logger()
+
 	ccs, err := NewConstraintSystem(circuit)
 	if err != nil {
 		log.Error().Msgf("failed to new %v constraint system: %v", c.ComponentName, err)
-		return nil, nil, nil, err
+		return err
 	}
 
 	srs, lsrs, err := ReadSrs(ccs.GetNbConstraints()+ccs.GetNbPublicVariables(), c.Config.SrsDir)
 	if err != nil {
 		log.Error().Msgf("failed to read srs: %v", err)
-		return nil, nil, nil, err
+		return err
 	}
 
 	pk, vk, err := PlonkSetup(ccs, srs, lsrs)
 	if err != nil {
 		log.Error().Msgf("failed to init %v pk vk: %v", c.ComponentName, err)
-		return nil, nil, nil, err
+		return err
 	}
+
 	c.Ccs = ccs
 	c.ProvingKey = pk
 	c.VerifyingKey = vk
 	c.Logger = &log
-	return ccs, pk, vk, nil
+
+	return c.saveCcsPkVk()
 }
 
 func (c *CircuitOperations) LoadCcsPkVk() error {
@@ -92,35 +95,20 @@ func (c *CircuitOperations) ProveWithAssignment(assignment frontend.Circuit, isF
 	}, nil
 }
 
-func (c *CircuitOperations) SaveCcsPkVk(ccsFile, pkFile, vkFile string) error {
-	err := WriteCcs(c.Ccs, ccsFile)
+func (c *CircuitOperations) saveCcsPkVk() error {
+	err := WriteCcs(c.Ccs, c.Config.CcsFile)
 	if err != nil {
 		c.Logger.Error().Msgf("failed to write %v ccs: %v", c.ComponentName, err)
 		return err
 	}
-	err = WritePk(c.ProvingKey, pkFile)
+	err = WritePk(c.ProvingKey, c.Config.PkFile)
 	if err != nil {
 		c.Logger.Error().Msgf("failed to write %v pk: %v", c.ComponentName, err)
 		return err
 	}
-	err = WriteVk(c.VerifyingKey, vkFile)
+	err = WriteVk(c.VerifyingKey, c.Config.VkFile)
 	if err != nil {
 		c.Logger.Error().Msgf("failed to write %v vk: %v", c.ComponentName, err)
-		return err
-	}
-	return nil
-}
-
-func (c *CircuitOperations) SaveProofAndWitness(proof *Proof, proofFile, witnessFile string) error {
-	err := WriteProof(proof.Proof, proofFile)
-	if err != nil {
-		c.Logger.Error().Msgf("failed to write %v proof: %v", c.ComponentName, err)
-		return err
-	}
-
-	err = WriteWitness(proof.Witness, witnessFile)
-	if err != nil {
-		c.Logger.Error().Msgf("failed to write %v witness: %v", c.ComponentName, err)
 		return err
 	}
 	return nil

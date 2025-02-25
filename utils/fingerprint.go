@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"slices"
 
 	"github.com/consensys/gnark-crypto/hash"
 	native_plonk "github.com/consensys/gnark/backend/plonk"
@@ -116,7 +115,6 @@ func VerifyingKeyMiMCHash[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El
 	}
 
 	result := mimc.Sum(nil)
-	slices.Reverse(result)
 	return result, nil
 }
 
@@ -171,7 +169,7 @@ func (fp FingerPrint[FR]) AssertIsEqual(api frontend.API, other FingerPrint[FR])
 }
 
 func (fp FingerPrint[FR]) IsEqual(api frontend.API, other FingerPrint[FR]) frontend.Variable {
-	return api.IsZero(api.Sub(fp.Val, other.Val))
+	return IsEqual(api, fp.Val, other.Val)
 }
 
 func FpValueOf[FR emulated.FieldParams](api frontend.API, v frontend.Variable) FingerPrint[FR] {

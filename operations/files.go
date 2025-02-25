@@ -240,6 +240,20 @@ func WriteWitnessInJson(wit witness.Witness, fn string) error {
 	return nil
 }
 
+func SaveProofAndWitness(proof *Proof, proofFile, witnessFile string) error {
+	err := WriteProof(proof.Proof, proofFile)
+	if err != nil {
+		return err
+	}
+
+	err = WriteWitness(proof.Witness, witnessFile)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func SaveProofAndWitnessInSol(proof *Proof, proofSolFile, witnessSolFile string) error {
 	err := WriteProofInSolidity(proof.Proof, proofSolFile)
 	if err != nil {
