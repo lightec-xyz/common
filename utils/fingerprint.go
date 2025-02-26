@@ -74,7 +74,6 @@ func InCircuitFingerPrint[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El
 	return result, nil
 }
 
-// FIXME: this functionality has been defined as VerifyingKey.FingerPrint(api). Use it. Do not duplicate codes.
 func VerifyingKeyMiMCHash[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El algebra.G2ElementT](h hash.Hash, vk plonk.VerifyingKey[FR, G1El, G2El]) ([]byte, error) {
 	mimc := h.New()
 
