@@ -8,21 +8,22 @@ import (
 	"github.com/consensys/gnark/std/rangecheck"
 )
 
+// assuming e has been reduced
 func RetrieveU8ValueFromElement[FR emulated.FieldParams](api frontend.API, e emulated.Element[FR]) frontend.Variable {
-	var fr FR
-	nbLimbs := fr.NbLimbs()
-	for i := 1; i < int(nbLimbs); i++ {
-		api.AssertIsEqual(e.Limbs[i], 0)
-	}
-
-	r := e.Limbs[0]
-	rcheck := rangecheck.New(api)
-	rcheck.Check(r, 8)
-	return r
+	return retrieveSmallValueFromElement[FR](api, e, 8)
 }
 
+// assuming e has been reduced
 func RetrieveU32ValueFromElement[FR emulated.FieldParams](api frontend.API, e emulated.Element[FR]) frontend.Variable {
+	return retrieveSmallValueFromElement[FR](api, e, 32)
+}
+
+func retrieveSmallValueFromElement[FR emulated.FieldParams](api frontend.API, e emulated.Element[FR], nbBits int) frontend.Variable {
 	var fr FR
+	if fr.BitsPerLimb() != 64 {
+		panic("unsupported number format")
+	}
+
 	nbLimbs := fr.NbLimbs()
 	for i := 1; i < int(nbLimbs); i++ {
 		api.AssertIsEqual(e.Limbs[i], 0)
@@ -31,7 +32,7 @@ func RetrieveU32ValueFromElement[FR emulated.FieldParams](api frontend.API, e em
 	r := e.Limbs[0]
 
 	rcheck := rangecheck.New(api)
-	rcheck.Check(r, 32)
+	rcheck.Check(r, nbBits)
 	return r
 }
 
@@ -52,9 +53,9 @@ func RetrieveVarsFromElements[FR emulated.FieldParams](
 	api frontend.API, witnessValues []emulated.Element[FR], nbMaxBitsPerVar ...uint,
 ) []frontend.Variable {
 	var fr FR
-	var maxBits int
+	bitsPerLimb := int(fr.BitsPerLimb())
 
-	bitsPerLimb := int(FR.BitsPerLimb(fr))
+	var maxBits int
 	if len(nbMaxBitsPerVar) == 0 {
 		maxBits = fr.Modulus().BitLen()
 	} else {
