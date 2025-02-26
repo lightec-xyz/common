@@ -10,9 +10,13 @@ func IsEqual(api frontend.API, a, b frontend.Variable) frontend.Variable {
 }
 
 func AreVarsEquals(api frontend.API, a, b []frontend.Variable) frontend.Variable {
-	api.AssertIsEqual(len(a), len(b))
+	n := len(a)
+	if len(b) != n {
+		panic("len(a) != len(b)")
+	}
+
 	sum := frontend.Variable(1)
-	for i := 0; i < len(a); i++ {
+	for i := 0; i < n; i++ {
 		t := IsEqual(api, a[i], b[i])
 		sum = api.And(sum, t)
 	}

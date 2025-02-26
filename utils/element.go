@@ -95,7 +95,9 @@ func AssertValsVSWtnsElements[FR emulated.FieldParams](
 	api frontend.API, vars []frontend.Variable, witnessValues []emulated.Element[FR], nbMaxBitsPerVar ...uint,
 ) {
 	n := len(witnessValues)
-	api.AssertIsEqual(n, len(vars))
+	if len(vars) != n {
+		panic("len(vars) != len(witnessValues)")
+	}
 
 	vals := RetrieveVarsFromElements(api, witnessValues, nbMaxBitsPerVar...)
 	for i := 0; i < n; i++ {
@@ -107,7 +109,9 @@ func TestValsVSWtnsElements[FR emulated.FieldParams](
 	api frontend.API, vars []frontend.Variable, witnessValues []emulated.Element[FR], nbMaxBitsPerVar ...uint,
 ) frontend.Variable {
 	n := len(witnessValues)
-	api.AssertIsEqual(n, len(vars))
+	if len(vars) != n {
+		panic("len(vars) != len(witnessValues)")
+	}
 
 	vals := RetrieveVarsFromElements(api, witnessValues, nbMaxBitsPerVar...)
 
