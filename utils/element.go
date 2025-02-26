@@ -63,8 +63,10 @@ func RetrieveVarsFromElements[FR emulated.FieldParams](
 
 	nbEffectiveLimbs := int((maxBits + bitsPerLimb - 1) / bitsPerLimb)
 
-	for i := 0; i < len(witnessValues); i++ {
-		for j := nbEffectiveLimbs; j < int(fr.NbLimbs()); j++ {
+	n := len(witnessValues)
+	for i := 0; i < n; i++ {
+		nbLimbs := len(witnessValues[i].Limbs)
+		for j := nbEffectiveLimbs; j < nbLimbs; j++ {
 			api.AssertIsEqual(witnessValues[i].Limbs[j], 0)
 		}
 	}
@@ -74,9 +76,7 @@ func RetrieveVarsFromElements[FR emulated.FieldParams](
 		constFactor = constFactor.Mul(constFactor, big.NewInt(2))
 	}
 
-	n := len(witnessValues)
 	rst := make([]frontend.Variable, n)
-
 	for i := 0; i < n; i++ {
 		eleLimbs := witnessValues[i].Limbs
 		composed := eleLimbs[nbEffectiveLimbs-1]
