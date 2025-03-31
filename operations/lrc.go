@@ -94,7 +94,7 @@ func (l *LRUCache) Get(key string) (interface{}, bool) {
 		l.list.MoveToFront(element)
 		return element.Value.(*Element).value, true
 	}
-	return "", false
+	return nil, false
 }
 
 func (l *LRUCache) Put(key string, value interface{}) {
