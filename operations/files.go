@@ -22,9 +22,14 @@ func ReadPk(fn string) (plonk.ProvingKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 	pk := plonk.NewProvingKey(ecc.BN254)
-	pk.ReadFrom(f)
+	_, err = pk.ReadFrom(f)
+	if err != nil {
+		return nil, err
+	}
 	return pk, nil
 }
 
@@ -33,7 +38,9 @@ func WritePk(pk plonk.ProvingKey, fn string) error {
 	if err != nil {
 		return err
 	}
-	defer openFile.Close()
+	defer func() {
+		_ = openFile.Close()
+	}()
 
 	_, err = pk.WriteTo(openFile)
 	if err != nil {
@@ -48,9 +55,14 @@ func ReadVk(fn string) (plonk.VerifyingKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 	vk := plonk.NewVerifyingKey(ecc.BN254)
-	vk.ReadFrom(f)
+	_, err = vk.ReadFrom(f)
+	if err != nil {
+		return nil, err
+	}
 
 	return vk, nil
 }
@@ -60,7 +72,9 @@ func WriteVk(vk plonk.VerifyingKey, fn string) error {
 	if err != nil {
 		return err
 	}
-	defer openFile.Close()
+	defer func() {
+		_ = openFile.Close()
+	}()
 
 	_, err = vk.WriteTo(openFile)
 	if err != nil {
@@ -75,7 +89,9 @@ func WriteVkInSolidity(vk plonk.VerifyingKey, fn string) error {
 	if err != nil {
 		return err
 	}
-	defer openFile.Close()
+	defer func() {
+		_ = openFile.Close()
+	}()
 
 	err = vk.ExportSolidity(openFile)
 	if err != nil {
@@ -104,7 +120,9 @@ func ReadCcs(fn string) (constraint.ConstraintSystem, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 	_, err = ccs.ReadFrom(f)
 	if err != nil {
 		return nil, err
@@ -118,7 +136,9 @@ func WriteCcs(ccs constraint.ConstraintSystem, fn string) error {
 	if err != nil {
 		return err
 	}
-	defer openFile.Close()
+	defer func() {
+		_ = openFile.Close()
+	}()
 
 	_, err = ccs.WriteTo(openFile)
 	if err != nil {
@@ -134,7 +154,9 @@ func ReadProof(fn string) (plonk.Proof, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 	_, err = bn254Proof.ReadFrom(f)
 	if err != nil {
 		return nil, err
@@ -147,7 +169,9 @@ func WriteProof(proof plonk.Proof, fn string) error {
 	if err != nil {
 		return err
 	}
-	defer openFile.Close()
+	defer func() {
+		_ = openFile.Close()
+	}()
 
 	_, err = proof.WriteTo(openFile)
 	if err != nil {
@@ -162,7 +186,9 @@ func WriteProofInSolidity(proof plonk.Proof, fn string) error {
 	if err != nil {
 		return err
 	}
-	defer openFile.Close()
+	defer func() {
+		_ = openFile.Close()
+	}()
 
 	_proof := proof.(*plonk_bn254.Proof)
 	proofStr := hex.EncodeToString(_proof.MarshalSolidity())
@@ -189,7 +215,9 @@ func ReadWitness(fn string) (witness.Witness, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 	_, err = wit.ReadFrom(f)
 	if err != nil {
 		return nil, err
@@ -203,7 +231,9 @@ func WriteWitness(wit witness.Witness, fn string) error {
 	if err != nil {
 		return err
 	}
-	defer openFile.Close()
+	defer func() {
+		_ = openFile.Close()
+	}()
 
 	//suppose wtns should only have public ones, but if all witness are given, extract only public ones
 	pubWit, err := wit.Public()
@@ -224,7 +254,9 @@ func WriteWitnessInJson(wit witness.Witness, fn string) error {
 	if err != nil {
 		return err
 	}
-	defer openFile.Close()
+	defer func() {
+		_ = openFile.Close()
+	}()
 
 	pw, err := wit.Public()
 	if err != nil {
@@ -322,12 +354,16 @@ func ReadSrs(size int, srsDir string) (*kzg.SRS, *kzg.SRS, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	defer fsrs.Close()
+	defer func() {
+		_ = fsrs.Close()
+	}()
 	flsrs, err := os.Open(lagrangeSrsFile)
 	if err != nil {
 		return nil, nil, err
 	}
-	defer flsrs.Close()
+	defer func() {
+		_ = flsrs.Close()
+	}()
 
 	_, err = srs.ReadFrom(fsrs)
 	if err != nil {
@@ -347,12 +383,11 @@ func ReadSrs(size int, srsDir string) (*kzg.SRS, *kzg.SRS, error) {
 	return &srs, &srsLagrange, nil
 }
 
+// todo rename ?
 func OpenFileOnCreaterOverwrite(file string) (*os.File, error) {
-	// 获取目录的状态信息
 	dir := filepath.Dir(file)
 	_, err := os.Stat(dir)
 	if err != nil {
-		// 如果目录不存在，则创建目录
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(dir, os.ModePerm)
 			if err != nil {
@@ -362,7 +397,6 @@ func OpenFileOnCreaterOverwrite(file string) (*os.File, error) {
 			return nil, err
 		}
 	}
-
 	exists, err := FileExists(file)
 	if err != nil {
 		return nil, err
@@ -379,6 +413,5 @@ func OpenFileOnCreaterOverwrite(file string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return fFile, nil
 }

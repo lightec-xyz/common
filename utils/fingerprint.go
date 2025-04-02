@@ -139,7 +139,9 @@ func UnsafeFingerPrintFromVkFile[FR emulated.FieldParams, G1El algebra.G1Element
 	if err != nil {
 		return nil, err
 	}
-	defer fvk.Close()
+	defer func() {
+		_ = fvk.Close()
+	}()
 	_, err = bn254Vk.ReadFrom(fvk)
 	if err != nil {
 		return nil, err

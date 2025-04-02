@@ -24,6 +24,15 @@ type CircuitOperations struct {
 	Logger        *zerolog.Logger
 }
 
+func NewCircuitOperations(config *Config, componentName string) *CircuitOperations {
+	log := logger.Logger().With().Str("component", componentName).Logger()
+	return &CircuitOperations{
+		Config:        config,
+		ComponentName: componentName,
+		Logger:        &log,
+	}
+}
+
 func (c *CircuitOperations) SetupAndSaveCcsPkVk(circuit frontend.Circuit) error {
 	log := logger.Logger().With().Str("component", c.ComponentName).Logger()
 
@@ -56,6 +65,9 @@ func (c *CircuitOperations) SetupAndSaveCcsPkVk(circuit frontend.Circuit) error 
 func (c *CircuitOperations) LoadCcsPkVk() error {
 	log := logger.Logger().With().Str("component", c.ComponentName).Logger()
 	c.Logger = &log
+	if lruManager != nil {
+		return c.LoadWithLru()
+	}
 	ccs, err := ReadCcs(c.Config.CcsFile)
 	if err != nil {
 		c.Logger.Error().Msgf("failed to read %v ccs: %v", c.ComponentName, err)
@@ -75,6 +87,28 @@ func (c *CircuitOperations) LoadCcsPkVk() error {
 	c.ProvingKey = pk
 	c.VerifyingKey = vk
 
+	return nil
+}
+
+func (c *CircuitOperations) LoadWithLru() error {
+	css, err := lruManager.GetCcs(c.Config.CcsFile)
+	if err != nil {
+		c.Logger.Error().Msgf("failed to get %v ccs: %v", c.ComponentName, err)
+		return err
+	}
+	c.Ccs = css
+	pk, err := lruManager.GetPk(c.Config.PkFile)
+	if err != nil {
+		c.Logger.Error().Msgf("failed get read %v pk: %v", c.ComponentName, err)
+		return err
+	}
+	c.ProvingKey = pk
+	vk, err := lruManager.GetVk(c.Config.VkFile)
+	if err != nil {
+		c.Logger.Error().Msgf("failed get read %v vk: %v", c.ComponentName, err)
+		return err
+	}
+	c.VerifyingKey = vk
 	return nil
 }
 
