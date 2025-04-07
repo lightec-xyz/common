@@ -1,6 +1,6 @@
 module github.com/lightec-xyz/common
 
-go 1.22.1
+go 1.24.0
 
 require (
 	github.com/consensys/gnark v0.12.0
