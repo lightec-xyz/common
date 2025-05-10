@@ -66,7 +66,7 @@ func (c *CircuitOperations) LoadCcsPkVk() error {
 	log := logger.Logger().With().Str("component", c.ComponentName).Logger()
 	c.Logger = &log
 	if lruManager != nil {
-		return c.LoadWithLru()
+		return c.loadCcsPkVkWithLRU()
 	}
 	ccs, err := ReadCcs(c.Config.CcsFile)
 	if err != nil {
@@ -90,7 +90,7 @@ func (c *CircuitOperations) LoadCcsPkVk() error {
 	return nil
 }
 
-func (c *CircuitOperations) LoadWithLru() error {
+func (c *CircuitOperations) loadCcsPkVkWithLRU() error {
 	css, err := lruManager.GetCcs(c.Config.CcsFile)
 	if err != nil {
 		c.Logger.Error().Msgf("failed to get %v ccs: %v", c.ComponentName, err)

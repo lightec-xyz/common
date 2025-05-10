@@ -10,21 +10,21 @@ import (
 
 var lruManager *LruManager
 
-func InitLru(capacity int) {
-	lruManager = NewLruManager(capacity)
+func InitLru(capacity int) { //entrance for lru
+	lruManager = newLruManager(capacity)
 }
 
 type LruManager struct {
 	pkQueue  *LRUCache // path -> ProvingKey
 	vkQueue  *LRUCache // path -> VerifyingKey
-	cssQueue *LRUCache // path -> css
+	ccsQueue *LRUCache // path -> css
 }
 
-func NewLruManager(capacity int) *LruManager {
+func newLruManager(capacity int) *LruManager {
 	return &LruManager{
 		pkQueue:  NewLRUCache(capacity),
 		vkQueue:  NewLRUCache(capacity),
-		cssQueue: NewLRUCache(capacity),
+		ccsQueue: NewLRUCache(capacity),
 	}
 }
 
@@ -55,7 +55,7 @@ func (m *LruManager) GetVk(path string) (plonk.VerifyingKey, error) {
 }
 
 func (m *LruManager) GetCcs(path string) (constraint.ConstraintSystem, error) {
-	value, ok := m.cssQueue.Get(path)
+	value, ok := m.ccsQueue.Get(path)
 	if ok {
 		return value.(constraint.ConstraintSystem), nil
 	}
@@ -63,7 +63,7 @@ func (m *LruManager) GetCcs(path string) (constraint.ConstraintSystem, error) {
 	if err != nil {
 		return nil, err
 	}
-	m.cssQueue.Put(path, ccs)
+	m.ccsQueue.Put(path, ccs)
 	return ccs, nil
 }
 
