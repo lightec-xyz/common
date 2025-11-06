@@ -12,6 +12,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/algebra"
+	"github.com/consensys/gnark/std/algebra/emulated/sw_bls12381"
+	"github.com/consensys/gnark/std/algebra/emulated/sw_bn254"
 	"github.com/consensys/gnark/std/algebra/emulated/sw_bw6761"
 	"github.com/consensys/gnark/std/math/emulated"
 	recursive_plonk "github.com/consensys/gnark/std/recursion/plonk"
@@ -23,6 +25,7 @@ type OuterCircuitDual[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El alg
 	Proofs         []recursive_plonk.Proof[FR, G1El, G2El]
 	VerifyingKeys  []recursive_plonk.VerifyingKey[FR, G1El, G2El] `gnark:"-"`
 	InnerWitnesses []recursive_plonk.Witness[FR]                  `gnark:",public"`
+	RawFpBytes     FingerPrintBytes
 }
 
 func (c *OuterCircuitDual[FR, G1El, G2El, GtEl]) Define(api frontend.API) error {
@@ -63,6 +66,10 @@ func (c *OuterCircuitDual[FR, G1El, G2El, GtEl]) Define(api frontend.API) error 
 	api.Println(fp3)
 	// different constant values should result in different verification keys
 	api.AssertIsDifferent(fp, fp3)
+
+	// consistency check: in-cuicuit computed vkey hash must match out-circuit computation
+	fpFromBytes := FingerPrintFromBytes[sw_bn254.ScalarField](c.RawFpBytes)
+	fpFromBytes.AssertIsEqual(api, FingerPrint[sw_bn254.ScalarField]{Val: fp})
 
 	return err
 }
@@ -162,52 +169,72 @@ func getInnerCircuitProof(assert *test.Assert, field, outer *big.Int) ([]constra
 }
 
 func TestBW6InBN254VkeyFp(t *testing.T) {
+	testVkeyFp[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine, sw_bw6761.GTEl, sw_bn254.ScalarField](t)
+}
+
+func TestBN254InBN254VkeyFp(t *testing.T) {
+	testVkeyFp[sw_bn254.ScalarField, sw_bn254.G1Affine, sw_bn254.G2Affine, sw_bn254.GTEl, sw_bn254.ScalarField](t)
+}
+
+func TestBls12381InBN254VkeyFp(t *testing.T) {
+	testVkeyFp[sw_bls12381.ScalarField, sw_bls12381.G1Affine, sw_bls12381.G2Affine, sw_bls12381.GTEl, sw_bn254.ScalarField](t)
+}
+
+func testVkeyFp[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El algebra.G2ElementT, GtEl algebra.GtElementT, FROuter emulated.FieldParams](
+	t *testing.T) {
+
+	var fr FR
+	var outerFr FROuter
 
 	assert := test.NewAssert(t)
-	innerCcs, innerVK, innerWitness, innerProof := getInnerCircuitProof(assert, ecc.BW6_761.ScalarField(), ecc.BN254.ScalarField())
+	innerCcs, innerVK, innerWitness, innerProof := getInnerCircuitProof(assert, fr.Modulus(), outerFr.Modulus())
 
 	// outer proofs
-	circuitVk, err := recursive_plonk.ValueOfVerifyingKey[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine](innerVK[0])
+	circuitVk, err := recursive_plonk.ValueOfVerifyingKey[FR, G1El, G2El](innerVK[0])
 	assert.NoError(err)
-	circuitWitness, err := recursive_plonk.ValueOfWitness[sw_bw6761.ScalarField](innerWitness[0])
+	circuitWitness, err := recursive_plonk.ValueOfWitness[FR](innerWitness[0])
 	assert.NoError(err)
-	circuitProof, err := recursive_plonk.ValueOfProof[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine](innerProof[0])
-	assert.NoError(err)
-
-	circuitVk2, err := recursive_plonk.ValueOfVerifyingKey[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine](innerVK[1])
-	assert.NoError(err)
-	circuitWitness2, err := recursive_plonk.ValueOfWitness[sw_bw6761.ScalarField](innerWitness[1])
-	assert.NoError(err)
-	circuitProof2, err := recursive_plonk.ValueOfProof[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine](innerProof[1])
+	circuitProof, err := recursive_plonk.ValueOfProof[FR, G1El, G2El](innerProof[0])
 	assert.NoError(err)
 
-	circuitVk3, err := recursive_plonk.ValueOfVerifyingKey[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine](innerVK[2])
-	assert.NoError(err)
-	circuitWitness3, err := recursive_plonk.ValueOfWitness[sw_bw6761.ScalarField](innerWitness[2])
-	assert.NoError(err)
-	circuitProof3, err := recursive_plonk.ValueOfProof[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine](innerProof[2])
+	circuitVkFp, err := UnsafeFingerPrintFromVk[FROuter](innerVK[0])
 	assert.NoError(err)
 
-	outerCircuit := &OuterCircuitDual[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine, sw_bw6761.GTEl]{
-		InnerWitnesses: []recursive_plonk.Witness[sw_bw6761.ScalarField]{
-			recursive_plonk.PlaceholderWitness[sw_bw6761.ScalarField](innerCcs[0]),
-			recursive_plonk.PlaceholderWitness[sw_bw6761.ScalarField](innerCcs[1]),
-			recursive_plonk.PlaceholderWitness[sw_bw6761.ScalarField](innerCcs[2]),
+	circuitVk2, err := recursive_plonk.ValueOfVerifyingKey[FR, G1El, G2El](innerVK[1])
+	assert.NoError(err)
+	circuitWitness2, err := recursive_plonk.ValueOfWitness[FR](innerWitness[1])
+	assert.NoError(err)
+	circuitProof2, err := recursive_plonk.ValueOfProof[FR, G1El, G2El](innerProof[1])
+	assert.NoError(err)
+
+	circuitVk3, err := recursive_plonk.ValueOfVerifyingKey[FR, G1El, G2El](innerVK[2])
+	assert.NoError(err)
+	circuitWitness3, err := recursive_plonk.ValueOfWitness[FR](innerWitness[2])
+	assert.NoError(err)
+	circuitProof3, err := recursive_plonk.ValueOfProof[FR, G1El, G2El](innerProof[2])
+	assert.NoError(err)
+
+	outerCircuit := &OuterCircuitDual[FR, G1El, G2El, GtEl]{
+		InnerWitnesses: []recursive_plonk.Witness[FR]{
+			recursive_plonk.PlaceholderWitness[FR](innerCcs[0]),
+			recursive_plonk.PlaceholderWitness[FR](innerCcs[1]),
+			recursive_plonk.PlaceholderWitness[FR](innerCcs[2]),
 		},
-		Proofs: []recursive_plonk.Proof[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine]{
-			recursive_plonk.PlaceholderProof[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine](innerCcs[0]),
-			recursive_plonk.PlaceholderProof[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine](innerCcs[1]),
-			recursive_plonk.PlaceholderProof[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine](innerCcs[2]),
+		Proofs: []recursive_plonk.Proof[FR, G1El, G2El]{
+			recursive_plonk.PlaceholderProof[FR, G1El, G2El](innerCcs[0]),
+			recursive_plonk.PlaceholderProof[FR, G1El, G2El](innerCcs[1]),
+			recursive_plonk.PlaceholderProof[FR, G1El, G2El](innerCcs[2]),
 		},
-		VerifyingKeys: []recursive_plonk.VerifyingKey[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine]{
+		VerifyingKeys: []recursive_plonk.VerifyingKey[FR, G1El, G2El]{
 			circuitVk,
 			circuitVk2,
 			circuitVk3,
 		},
+		RawFpBytes: circuitVkFp,
 	}
-	outerAssignment := &OuterCircuitDual[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine, sw_bw6761.GTEl]{
-		InnerWitnesses: []recursive_plonk.Witness[sw_bw6761.ScalarField]{circuitWitness, circuitWitness2, circuitWitness3},
-		Proofs:         []recursive_plonk.Proof[sw_bw6761.ScalarField, sw_bw6761.G1Affine, sw_bw6761.G2Affine]{circuitProof, circuitProof2, circuitProof3},
+	outerAssignment := &OuterCircuitDual[FR, G1El, G2El, GtEl]{
+		InnerWitnesses: []recursive_plonk.Witness[FR]{circuitWitness, circuitWitness2, circuitWitness3},
+		Proofs:         []recursive_plonk.Proof[FR, G1El, G2El]{circuitProof, circuitProof2, circuitProof3},
 	}
 	err = test.IsSolved(outerCircuit, outerAssignment, ecc.BN254.ScalarField())
 	assert.NoError(err)

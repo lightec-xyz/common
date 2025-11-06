@@ -1,13 +1,20 @@
 package utils
 
 import (
+	"encoding/binary"
 	"fmt"
-	"math/big"
+	"hash"
 	"os"
 
-	"github.com/consensys/gnark-crypto/hash"
+	mimc_bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
+	mimc_bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr/mimc"
+	mimc_bls24315 "github.com/consensys/gnark-crypto/ecc/bls24-315/fr/mimc"
+	mimc_bn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
+	mimc_bw6761 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr/mimc"
 	native_plonk "github.com/consensys/gnark/backend/plonk"
+	plonk_bls12381 "github.com/consensys/gnark/backend/plonk/bls12-381"
 	plonk_bn254 "github.com/consensys/gnark/backend/plonk/bn254"
+	plonk_bw6761 "github.com/consensys/gnark/backend/plonk/bw6-761"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra"
 	"github.com/consensys/gnark/std/algebra/emulated/sw_bls12381"
@@ -26,14 +33,14 @@ import (
 func InCircuitFingerPrint[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El algebra.G2ElementT](
 	api frontend.API, vk *plonk.VerifyingKey[FR, G1El, G2El]) (frontend.Variable, error) {
 	var ret frontend.Variable
-	mimc, err := mimc.NewMiMC(api)
-	if err != nil {
-		return ret, err
-	}
 
-	mimc.Write(vk.BaseVerifyingKey.NbPublicVariables)
-	mimc.Write(vk.CircuitVerifyingKey.Size)
-	mimc.Write(vk.CircuitVerifyingKey.Generator.Limbs[:]...)
+	allU64s := make([]frontend.Variable, 0)
+	allU64s = append(allU64s, vk.BaseVerifyingKey.NbPublicVariables)
+	allU64s = append(allU64s, vk.CircuitVerifyingKey.Size)
+
+	elements := make([]frontend.Variable, 0)
+	vk.CircuitVerifyingKey.Generator.Initialize(api.Compiler().Field())
+	elements = append(elements, vk.CircuitVerifyingKey.Generator.Limbs[:]...)
 
 	comms := make([]kzg.Commitment[G1El], 0)
 	comms = append(comms, vk.CircuitVerifyingKey.S[:]...)
@@ -48,106 +55,158 @@ func InCircuitFingerPrint[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El
 		el := comm.G1El
 		var fr FR
 		switch r := any(&el).(type) {
-		case *sw_bls12377.G1Affine:
-			x := r.X.(emulated.Element[FR])
-			y := r.Y.(emulated.Element[FR])
-			x.Initialize(fr.Modulus())
-			y.Initialize(fr.Modulus())
-			mimc.Write(r.X)
-			mimc.Write(r.Y)
 		case *sw_bls12381.G1Affine:
 			r.X.Initialize(fr.Modulus())
 			r.Y.Initialize(fr.Modulus())
-			mimc.Write(r.X.Limbs[:]...)
-			mimc.Write(r.Y.Limbs[:]...)
-		case *sw_bls24315.G1Affine:
-			x := r.X.(emulated.Element[FR])
-			x.Initialize(fr.Modulus())
-			y := r.Y.(emulated.Element[FR])
-			y.Initialize(fr.Modulus())
-			mimc.Write(r.X)
-			mimc.Write(r.Y)
+			elements = append(elements, r.X.Limbs[:]...)
+			elements = append(elements, r.Y.Limbs[:]...)
 		case *sw_bw6761.G1Affine:
 			r.X.Initialize(fr.Modulus())
 			r.Y.Initialize(fr.Modulus())
-			mimc.Write(r.X.Limbs[:]...)
-			mimc.Write(r.Y.Limbs[:]...)
+			elements = append(elements, r.X.Limbs[:]...)
+			elements = append(elements, r.Y.Limbs[:]...)
 		case *sw_bn254.G1Affine:
 			r.X.Initialize(fr.Modulus())
 			r.Y.Initialize(fr.Modulus())
-			mimc.Write(r.X.Limbs[:]...)
-			mimc.Write(r.Y.Limbs[:]...)
+			elements = append(elements, r.X.Limbs[:]...)
+			elements = append(elements, r.Y.Limbs[:]...)
 		default:
 			return ret, fmt.Errorf("unknown parametric type")
 		}
 	}
 
-	mimc.Write(vk.CircuitVerifyingKey.CommitmentConstraintIndexes[:]...)
+	allU64s = append(allU64s, vk.CircuitVerifyingKey.CommitmentConstraintIndexes[:]...)
 
+	mimc, err := mimc.NewMiMC(api) // the default field is determined by the information from api
+	if err != nil {
+		return ret, err
+	}
+	for _, u64 := range allU64s {
+		mimc.Write(u64)
+	}
+	for _, element := range elements {
+		mimc.Write(element)
+	}
 	result := mimc.Sum()
 
 	return result, nil
 }
 
-func VerifyingKeyMiMCHash[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El algebra.G2ElementT](h hash.Hash, vk plonk.VerifyingKey[FR, G1El, G2El]) ([]byte, error) {
-	mimc := h.New()
+func UnsafeFingerPrintFromVk[FR emulated.FieldParams](vk native_plonk.VerifyingKey) (FingerPrintBytes, error) {
+	var fr FR
+	var hash hash.Hash
+	switch any(&fr).(type) {
+	case *sw_bw6761.ScalarField:
+		hash = mimc_bw6761.NewMiMC()
+	case *sw_bn254.ScalarField:
+		hash = mimc_bn254.NewMiMC()
+	case *sw_bls12381.ScalarField:
+		hash = mimc_bls12381.NewMiMC()
+	case *sw_bls12377.ScalarField:
+		hash = mimc_bls12377.NewMiMC()
+	case *sw_bls24315.ScalarField:
+		hash = mimc_bls24315.NewMiMC()
+	default:
+		return nil, fmt.Errorf("unknown parametric type for %d", fr.Modulus())
+	}
 
-	mimc.Write(big.NewInt(int64(vk.BaseVerifyingKey.NbPublicVariables)).Bytes())
-	mimc.Write(big.NewInt(int64(vk.CircuitVerifyingKey.Size.(uint64))).Bytes())
-	{
-		for i := 0; i < len(vk.Generator.Limbs); i++ {
-			mimc.Write(vk.Generator.Limbs[i].(*big.Int).Bytes())
+	// element limbs in montgomery form, we could marshall first
+
+	elements := make([][]byte, 0)
+	nums := make([]uint64, 0)
+	switch r := any(vk).(type) {
+	case *plonk_bls12381.VerifyingKey:
+		nums = append(nums, r.NbPublicVariables)
+		nums = append(nums, r.Size)
+		elements = append(elements, r.Generator.Marshal())
+		for _, s := range r.S {
+			elements = append(elements, s.X.Marshal())
+			elements = append(elements, s.Y.Marshal())
+		}
+		elements = append(elements, r.Ql.X.Marshal())
+		elements = append(elements, r.Ql.Y.Marshal())
+		elements = append(elements, r.Qr.X.Marshal())
+		elements = append(elements, r.Qr.Y.Marshal())
+		elements = append(elements, r.Qm.X.Marshal())
+		elements = append(elements, r.Qm.Y.Marshal())
+		elements = append(elements, r.Qo.X.Marshal())
+		elements = append(elements, r.Qo.Y.Marshal())
+		elements = append(elements, r.Qk.X.Marshal())
+		elements = append(elements, r.Qk.Y.Marshal())
+		for _, c := range r.Qcp {
+			elements = append(elements, c.X.Marshal())
+			elements = append(elements, c.Y.Marshal())
+		}
+		nums = append(nums, r.CommitmentConstraintIndexes...)
+	case *plonk_bw6761.VerifyingKey:
+		nums = append(nums, r.NbPublicVariables)
+		nums = append(nums, r.Size)
+		elements = append(elements, r.Generator.Marshal())
+		for _, s := range r.S {
+			elements = append(elements, s.X.Marshal())
+			elements = append(elements, s.Y.Marshal())
+		}
+		elements = append(elements, r.Ql.X.Marshal())
+		elements = append(elements, r.Ql.Y.Marshal())
+		elements = append(elements, r.Qr.X.Marshal())
+		elements = append(elements, r.Qr.Y.Marshal())
+		elements = append(elements, r.Qm.X.Marshal())
+		elements = append(elements, r.Qm.Y.Marshal())
+		elements = append(elements, r.Qo.X.Marshal())
+		elements = append(elements, r.Qo.Y.Marshal())
+		elements = append(elements, r.Qk.X.Marshal())
+		elements = append(elements, r.Qk.Y.Marshal())
+		for _, c := range r.Qcp {
+			elements = append(elements, c.X.Marshal())
+			elements = append(elements, c.Y.Marshal())
+		}
+		nums = append(nums, r.CommitmentConstraintIndexes...)
+	case *plonk_bn254.VerifyingKey:
+		nums = append(nums, r.NbPublicVariables)
+		nums = append(nums, r.Size)
+		elements = append(elements, r.Generator.Marshal())
+		for _, s := range r.S {
+			elements = append(elements, s.X.Marshal())
+			elements = append(elements, s.Y.Marshal())
+		}
+		elements = append(elements, r.Ql.X.Marshal())
+		elements = append(elements, r.Ql.Y.Marshal())
+		elements = append(elements, r.Qr.X.Marshal())
+		elements = append(elements, r.Qr.Y.Marshal())
+		elements = append(elements, r.Qm.X.Marshal())
+		elements = append(elements, r.Qm.Y.Marshal())
+		elements = append(elements, r.Qo.X.Marshal())
+		elements = append(elements, r.Qo.Y.Marshal())
+		elements = append(elements, r.Qk.X.Marshal())
+		elements = append(elements, r.Qk.Y.Marshal())
+		for _, c := range r.Qcp {
+			elements = append(elements, c.X.Marshal())
+			elements = append(elements, c.Y.Marshal())
+		}
+		nums = append(nums, r.CommitmentConstraintIndexes...)
+	default:
+		return nil, fmt.Errorf("unknown parametric type")
+	}
+
+	for _, num := range nums {
+		b8 := make([]byte, 8)
+		binary.BigEndian.PutUint64(b8, num)
+		hash.Write(b8)
+	}
+
+	for _, elementBytes := range elements {
+		for l := len(elementBytes) / 8; l > 0; l-- {
+			hash.Write(elementBytes[(l-1)*8 : l*8])
 		}
 	}
 
-	comms := make([]kzg.Commitment[G1El], 0)
-	comms = append(comms, vk.CircuitVerifyingKey.S[:]...)
-	comms = append(comms, vk.CircuitVerifyingKey.Ql)
-	comms = append(comms, vk.CircuitVerifyingKey.Qr)
-	comms = append(comms, vk.CircuitVerifyingKey.Qm)
-	comms = append(comms, vk.CircuitVerifyingKey.Qo)
-	comms = append(comms, vk.CircuitVerifyingKey.Qk)
-	comms = append(comms, vk.CircuitVerifyingKey.Qcp[:]...)
+	result := hash.Sum(nil)
 
-	for _, comm := range comms {
-		el := comm.G1El
-		var fr FR
-		switch r := any(&el).(type) {
-		case *sw_bn254.G1Affine:
-			r.X.Initialize(fr.Modulus())
-			r.Y.Initialize(fr.Modulus())
-			for i := 0; i < len(r.X.Limbs); i++ {
-				mimc.Write(r.X.Limbs[i].(*big.Int).Bytes())
-			}
-			for i := 0; i < len(r.Y.Limbs); i++ {
-				mimc.Write(r.Y.Limbs[i].(*big.Int).Bytes())
-			}
-		default:
-			panic("unknown parametric type")
-		}
-	}
-
-	for i := 0; i < len(vk.CircuitVerifyingKey.CommitmentConstraintIndexes); i++ {
-		mimc.Write(big.NewInt(int64(vk.CircuitVerifyingKey.CommitmentConstraintIndexes[i].(uint64))).Bytes())
-	}
-
-	result := mimc.Sum(nil)
 	return result, nil
+
 }
 
-func UnsafeFingerPrintFromVk[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El algebra.G2ElementT, GtEl algebra.GtElementT](vk native_plonk.VerifyingKey) ([]byte, error) {
-	circuitVk, err := plonk.ValueOfVerifyingKey[FR, G1El, G2El](vk)
-	if err != nil {
-		return nil, err
-	}
-	fpBytes, err := VerifyingKeyMiMCHash[FR, G1El, G2El](hash.MIMC_BN254, circuitVk)
-	if err != nil {
-		return nil, err
-	}
-	return fpBytes, nil
-}
-
-func UnsafeFingerPrintFromVkFile[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El algebra.G2ElementT, GtEl algebra.GtElementT](vkFile string) ([]byte, error) {
+func UnsafeFingerPrintFromVkFile[FR emulated.FieldParams](vkFile string) (FingerPrintBytes, error) {
 	var (
 		err     error
 		bn254Vk plonk_bn254.VerifyingKey
@@ -164,7 +223,7 @@ func UnsafeFingerPrintFromVkFile[FR emulated.FieldParams, G1El algebra.G1Element
 	if err != nil {
 		return nil, err
 	}
-	return UnsafeFingerPrintFromVk[FR, G1El, G2El, GtEl](&bn254Vk)
+	return UnsafeFingerPrintFromVk[FR](&bn254Vk)
 }
 
 /**

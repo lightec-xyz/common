@@ -166,7 +166,7 @@ func (c *CircuitOperations) UnsafeFingerPrint() ([]byte, error) {
 		c.Logger.Error().Msgf("failed to get %v vk: %v", c.ComponentName, err)
 		return nil, err
 	}
-	vkFigurePrint, err := utils.UnsafeFingerPrintFromVk[sw_bn254.ScalarField, sw_bn254.G1Affine, sw_bn254.G2Affine, sw_bn254.GTEl](verifyingKey)
+	vkFigurePrint, err := utils.UnsafeFingerPrintFromVk[sw_bn254.ScalarField](verifyingKey)
 	if err != nil {
 		c.Logger.Error().Msgf("failed to get %v fingerprint: %v", c.ComponentName, err)
 		return nil, err
