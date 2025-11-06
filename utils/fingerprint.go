@@ -46,20 +46,35 @@ func InCircuitFingerPrint[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El
 
 	for _, comm := range comms {
 		el := comm.G1El
+		var fr FR
 		switch r := any(&el).(type) {
 		case *sw_bls12377.G1Affine:
+			x := r.X.(emulated.Element[FR])
+			y := r.Y.(emulated.Element[FR])
+			x.Initialize(fr.Modulus())
+			y.Initialize(fr.Modulus())
 			mimc.Write(r.X)
 			mimc.Write(r.Y)
 		case *sw_bls12381.G1Affine:
+			r.X.Initialize(fr.Modulus())
+			r.Y.Initialize(fr.Modulus())
 			mimc.Write(r.X.Limbs[:]...)
 			mimc.Write(r.Y.Limbs[:]...)
 		case *sw_bls24315.G1Affine:
+			x := r.X.(emulated.Element[FR])
+			x.Initialize(fr.Modulus())
+			y := r.Y.(emulated.Element[FR])
+			y.Initialize(fr.Modulus())
 			mimc.Write(r.X)
 			mimc.Write(r.Y)
 		case *sw_bw6761.G1Affine:
+			r.X.Initialize(fr.Modulus())
+			r.Y.Initialize(fr.Modulus())
 			mimc.Write(r.X.Limbs[:]...)
 			mimc.Write(r.Y.Limbs[:]...)
 		case *sw_bn254.G1Affine:
+			r.X.Initialize(fr.Modulus())
+			r.Y.Initialize(fr.Modulus())
 			mimc.Write(r.X.Limbs[:]...)
 			mimc.Write(r.Y.Limbs[:]...)
 		default:
@@ -96,8 +111,11 @@ func VerifyingKeyMiMCHash[FR emulated.FieldParams, G1El algebra.G1ElementT, G2El
 
 	for _, comm := range comms {
 		el := comm.G1El
+		var fr FR
 		switch r := any(&el).(type) {
 		case *sw_bn254.G1Affine:
+			r.X.Initialize(fr.Modulus())
+			r.Y.Initialize(fr.Modulus())
 			for i := 0; i < len(r.X.Limbs); i++ {
 				mimc.Write(r.X.Limbs[i].(*big.Int).Bytes())
 			}

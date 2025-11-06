@@ -30,16 +30,20 @@ func (c *OuterCircuitDual[FR, G1El, G2El, GtEl]) Define(api frontend.API) error 
 	if err != nil {
 		return fmt.Errorf("new verifier: %w", err)
 	}
+	err = verifier.AssertProof(c.VerifyingKeys[0], c.Proofs[0], c.InnerWitnesses[0], recursive_plonk.WithCompleteArithmetic())
+	if err != nil {
+		return err
+	}
 	fp, err := InCircuitFingerPrint[FR, G1El, G2El](api, &c.VerifyingKeys[0])
 	if err != nil {
 		return fmt.Errorf("new curve for verification keys: %w", err)
 	}
 	api.Println(fp)
-	err = verifier.AssertProof(c.VerifyingKeys[0], c.Proofs[0], c.InnerWitnesses[0], recursive_plonk.WithCompleteArithmetic())
+
+	err = verifier.AssertProof(c.VerifyingKeys[1], c.Proofs[1], c.InnerWitnesses[1], recursive_plonk.WithCompleteArithmetic())
 	if err != nil {
 		return err
 	}
-
 	fp2, err := InCircuitFingerPrint[FR, G1El, G2El](api, &c.VerifyingKeys[1])
 	if err != nil {
 		return fmt.Errorf("new curve for verification keys: %w", err)
@@ -48,6 +52,10 @@ func (c *OuterCircuitDual[FR, G1El, G2El, GtEl]) Define(api frontend.API) error 
 	// same constant value should result same verification key
 	api.AssertIsEqual(fp, fp2)
 
+	err = verifier.AssertProof(c.VerifyingKeys[2], c.Proofs[2], c.InnerWitnesses[2], recursive_plonk.WithCompleteArithmetic())
+	if err != nil {
+		return err
+	}
 	fp3, err := InCircuitFingerPrint[FR, G1El, G2El](api, &c.VerifyingKeys[2])
 	if err != nil {
 		return fmt.Errorf("new curve for verification keys: %w", err)
